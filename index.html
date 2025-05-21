@@ -22,31 +22,44 @@
   <video id="videoPlayer" autoplay muted playsinline></video>
 
   <script>
-    // Manually define your video list here (relative to /Videos/)
-    const videoList = [
-	"Videos/video1.mp4",
-	"Videos/video2.mp4",
-	"Videos/video3.mp4",
-    "Videos/video4.mp4",
-    "Videos/video5.mp4"
-    ];
+    document.addEventListener('DOMContentLoaded', () => {
+      const videoList = [
+        "Videos/video1.mp4",
+        "Videos/video2.mp4",
+        "Videos/video3.mp4",
+        "Videos/video4.mp4",
+        "Videos/video5.mp4"
+      ];
 
-    let currentVideo = 0;
-    const videoPlayer = document.getElementById("videoPlayer");
+      let currentVideo = 0;
+      const videoPlayer = document.getElementById("videoPlayer");
 
-    function playNextVideo() {
-      videoPlayer.src = videoList[currentVideo];
-      videoPlayer.load();
-      videoPlayer.play();
-    }
+      function playNextVideo() {
+        videoPlayer.src = videoList[currentVideo];
+        videoPlayer.load();
+        videoPlayer.play()
+          .then(() => {
+            console.log("Playback started:", videoList[currentVideo]);
+          })
+          .catch(err => {
+            console.error("Playback failed:", err);
+          });
+      }
 
-    videoPlayer.addEventListener('ended', () => {
-      currentVideo = (currentVideo + 1) % videoList.length; // loop
+      videoPlayer.addEventListener('ended', () => {
+        currentVideo = (currentVideo + 1) % videoList.length;
+        playNextVideo();
+      });
+
+      videoPlayer.addEventListener('canplaythrough', () => {
+        console.log("Video ready, playing...");
+        videoPlayer.play()
+          .then(() => console.log("Playback started after buffer"))
+          .catch(err => console.error("Post-buffer playback failed:", err));
+      });
+
       playNextVideo();
     });
-
-    // Start playback
-    playNextVideo();
   </script>
 </body>
 </html>
