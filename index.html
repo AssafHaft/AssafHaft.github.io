@@ -13,8 +13,10 @@
     }
     video {
       width: 100vw;
-      height: 100vh;
-      object-fit: cover;
+	  height: 100vh;
+	  object-fit: cover;
+	  opacity: 1;
+	  transition: opacity 1s ease-in-out;
     }
   </style>
 </head>
@@ -22,44 +24,48 @@
   <video id="videoPlayer" autoplay muted playsinline></video>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const videoList = [
-        "Videos/video1.mp4",
-        "Videos/video2.mp4",
-        "Videos/video3.mp4",
-        "Videos/video4.mp4",
-        "Videos/video5.mp4"
-      ];
+  document.addEventListener('DOMContentLoaded', () => {
+    const videoList = [
+      "Videos/video1.mp4",
+      "Videos/video2.mp4",
+      "Videos/video3.mp4",
+      "Videos/video4.mp4",
+      "Videos/video5.mp4"
+    ];
 
-      let currentVideo = 0;
-      const videoPlayer = document.getElementById("videoPlayer");
+    let currentVideo = 0;
+    const videoPlayer = document.getElementById("videoPlayer");
 
-      function playNextVideo() {
+    function playNextVideo() {
+      // Fade out
+      videoPlayer.style.opacity = 0;
+
+      setTimeout(() => {
         videoPlayer.src = videoList[currentVideo];
         videoPlayer.load();
         videoPlayer.play()
           .then(() => {
             console.log("Playback started:", videoList[currentVideo]);
+            videoPlayer.style.opacity = 1; // Fade in
           })
           .catch(err => {
             console.error("Playback failed:", err);
           });
-      }
+      }, 1000); // wait for fade-out to finish
+    }
 
-      videoPlayer.addEventListener('ended', () => {
-        currentVideo = (currentVideo + 1) % videoList.length;
-        playNextVideo();
-      });
-
-      videoPlayer.addEventListener('canplaythrough', () => {
-        console.log("Video ready, playing...");
-        videoPlayer.play()
-          .then(() => console.log("Playback started after buffer"))
-          .catch(err => console.error("Post-buffer playback failed:", err));
-      });
-
+    videoPlayer.addEventListener('ended', () => {
+      currentVideo = (currentVideo + 1) % videoList.length;
       playNextVideo();
     });
-  </script>
+
+    videoPlayer.addEventListener('canplaythrough', () => {
+      videoPlayer.play().catch(err => console.error("Retry play error:", err));
+    });
+
+    playNextVideo();
+  });
+</script>
+
 </body>
 </html>
