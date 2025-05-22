@@ -57,12 +57,20 @@
           currentVideo = (currentVideo + 1) % videoList.length;
           videoPlayer.src = videoList[currentVideo];
           videoPlayer.load();
-          videoPlayer.play().then(() => {
+
+          // Wait for real video start before fade-in
+          const onTimeUpdate = () => {
+            videoPlayer.removeEventListener('timeupdate', onTimeUpdate);
             videoPlayer.style.opacity = 1;
             overlay.style.opacity = 0;
-          }).catch(err => console.error("Playback error:", err));
-        }, 300); // match fade duration
+          };
+
+          videoPlayer.addEventListener('timeupdate', onTimeUpdate);
+
+          videoPlayer.play().catch(err => console.error("Playback error:", err));
+        }, 300); // match overlay fade timing
       }
+
 
       videoPlayer.addEventListener('ended', playNextVideo);
 
