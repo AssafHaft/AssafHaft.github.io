@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Wave Park Video Loop - Lightweight</title>
+  <title>Wave Park Video Loop - Overlay</title>
   <style>
     html, body {
       margin: 0;
@@ -18,10 +18,22 @@
       transition: opacity 0.3s ease-in-out;
       opacity: 1;
     }
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+      z-index: 10;
+    }
   </style>
 </head>
 <body>
   <video id="videoPlayer" autoplay muted playsinline></video>
+  <img id="overlay" src="Images/SRF_Transtion_Image.png" alt="Transition Overlay">
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -30,15 +42,15 @@
         "Videos/video2.mp4",
         "Videos/video3.mp4",
         "Videos/video4.mp4",
-        "Videos/video5.mp4",
-        "Videos/video6.mp4",
-        "Videos/video7.mp4"
+        "Videos/video5.mp4"
       ];
 
       let currentVideo = 0;
       const videoPlayer = document.getElementById("videoPlayer");
+      const overlay = document.getElementById("overlay");
 
       function playNextVideo() {
+        overlay.style.opacity = 1;
         videoPlayer.style.opacity = 0;
 
         setTimeout(() => {
@@ -47,13 +59,14 @@
           videoPlayer.load();
           videoPlayer.play().then(() => {
             videoPlayer.style.opacity = 1;
+            overlay.style.opacity = 0;
           }).catch(err => console.error("Playback error:", err));
-        }, 300); // match fade-out time
+        }, 300); // match fade duration
       }
 
       videoPlayer.addEventListener('ended', playNextVideo);
 
-      // Start
+      // Initial playback
       videoPlayer.src = videoList[currentVideo];
       videoPlayer.play().then(() => {
         console.log("First video started");
