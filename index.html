@@ -39,60 +39,82 @@
     <video id="video2" autoplay muted playsinline></video>
   </div>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const videoList = [
-        "Videos/video1.mp4",
-        "Videos/video2.mp4",
-        "Videos/video3.mp4",
-        "Videos/video4.mp4",
-        "Videos/video5.mp4"
-      ];
+  
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const videoList = [
+      "Videos/video1.mp4",
+      "Videos/video2.mp4",
+      "Videos/video3.mp4",
+      "Videos/video4.mp4",
+      "Videos/video5.mp4"
+    ];
 
-      let currentVideoIndex = 0;
-      let activePlayer = 1;
+    let currentVideoIndex = 0;
+    let activePlayer = 1;
+    let preloadTimeout;
 
-      const player1 = document.getElementById("video1");
-      const player2 = document.getElementById("video2");
+    const player1 = document.getElementById("video1");
+    const player2 = document.getElementById("video2");
 
-      function getInactivePlayer() {
-        return activePlayer === 1 ? player2 : player1;
-      }
+    function getInactivePlayer() {
+      return activePlayer === 1 ? player2 : player1;
+    }
 
-      function getActivePlayer() {
-        return activePlayer === 1 ? player1 : player2;
-      }
+    function getActivePlayer() {
+      return activePlayer === 1 ? player1 : player2;
+    }
 
-      function playNextVideo() {
+    function schedulePreload() {
+      clearTimeout(preloadTimeout);
+      const active = getActivePlayer();
+
+      preloadTimeout = setTimeout(() => {
         const nextPlayer = getInactivePlayer();
         const nextIndex = (currentVideoIndex + 1) % videoList.length;
+
+        console.log("Preloading:", videoList[nextIndex]);
 
         nextPlayer.src = videoList[nextIndex];
         nextPlayer.load();
 
         nextPlayer.oncanplaythrough = () => {
-          nextPlayer.play().then(() => {
-            // Crossfade
-            getActivePlayer().classList.remove("active");
-            nextPlayer.classList.add("active");
-
-            // Switch players
-            activePlayer = activePlayer === 1 ? 2 : 1;
-            currentVideoIndex = nextIndex;
-          });
+          console.log("Ready to crossfade:", videoList[nextIndex]);
         };
-      }
+      }, Math.max(active.duration - 5, 1) * 1000); // preload 5 sec before end
+    }
 
-      // Initial start
-      const startPlayer = getActivePlayer();
-      startPlayer.src = videoList[currentVideoIndex];
-      startPlayer.classList.add("active");
-      startPlayer.play();
+    function crossfadeToNext() {
+      const nextPlayer = getInactivePlayer();
+      const nextIndex = (currentVideoIndex + 1) % videoList.length;
 
-      startPlayer.onended = playNextVideo;
-      player1.onended = playNextVideo;
-      player2.onended = playNextVideo;
+      nextPlayer.oncanplaythrough = null; // already loaded during preload
+      nextPlayer.play().then(() => {
+        getActivePlayer().classList.remove("active");
+        nextPlayer.classList.add("active");
+
+        activePlayer = activePlayer === 1 ? 2 : 1;
+        currentVideoIndex = nextIndex;
+
+        schedulePreload(); // setup for the next round
+      }).catch(err => console.error("Crossfade play error:", err));
+    }
+
+    // Start playback
+    const startPlayer = getActivePlayer();
+    startPlayer.src = videoList[currentVideoIndex];
+    startPlayer.classList.add("active");
+    startPlayer.play().then(() => {
+      schedulePreload();
     });
-  </script>
+
+    // On any player end, trigger crossfade
+    player1.onended = crossfadeToNext;
+    player2.onended = crossfadeToNext;
+  });
+</script>
+
+
+
 </body>
 </html>
