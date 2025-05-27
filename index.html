@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Wave Park Video Loop - Overlay</title>
+  <title>Wave Park Video Loop - GIF Splash</title>
   <style>
     html, body {
       margin: 0;
@@ -26,14 +26,14 @@
       height: 100vh;
       object-fit: cover;
       opacity: 0;
-      transition: opacity 0.3s ease-in-out;
+      transition: opacity 0.5s ease-in-out;
       z-index: 10;
     }
   </style>
 </head>
 <body>
   <video id="videoPlayer" autoplay muted playsinline></video>
-  <img id="overlay" src="Images/SRF_Transtion_Image.png" alt="Transition Overlay">
+  <img id="overlay" src="Images/Splash_Anim.gif" alt="Splash GIF">
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -50,6 +50,19 @@
       const videoPlayer = document.getElementById("videoPlayer");
       const overlay = document.getElementById("overlay");
 
+      let videoEndWatcher = null;
+
+      function scheduleSplashBeforeEnd() {
+        if (videoEndWatcher) clearInterval(videoEndWatcher);
+
+        videoEndWatcher = setInterval(() => {
+          if (videoPlayer.duration && videoPlayer.currentTime > videoPlayer.duration - 1) {
+            overlay.style.opacity = 1;
+            clearInterval(videoEndWatcher);
+          }
+        }, 200);
+      }
+
       function playNextVideo() {
         overlay.style.opacity = 1;
         videoPlayer.style.opacity = 0;
@@ -59,26 +72,26 @@
           videoPlayer.src = videoList[currentVideo];
           videoPlayer.load();
 
-          // Wait for real video start before fade-in
           const onTimeUpdate = () => {
-            videoPlayer.removeEventListener('timeupdate', onTimeUpdate);
-            videoPlayer.style.opacity = 1;
-            overlay.style.opacity = 0;
+            if (videoPlayer.currentTime >= 1) {
+              videoPlayer.removeEventListener('timeupdate', onTimeUpdate);
+              overlay.style.opacity = 0;
+              videoPlayer.style.opacity = 1;
+              scheduleSplashBeforeEnd();
+            }
           };
 
           videoPlayer.addEventListener('timeupdate', onTimeUpdate);
-
           videoPlayer.play().catch(err => console.error("Playback error:", err));
-        }, 300); // match overlay fade timing
+        }, 10000); // Hold splash for 10 sec
       }
-
 
       videoPlayer.addEventListener('ended', playNextVideo);
 
       // Initial playback
       videoPlayer.src = videoList[currentVideo];
       videoPlayer.play().then(() => {
-        console.log("First video started");
+        scheduleSplashBeforeEnd();
       }).catch(err => console.error("Initial playback failed:", err));
     });
   </script>
