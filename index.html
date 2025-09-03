@@ -3,217 +3,71 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Loop Video Player</title>
-  <meta name="description" content="Choose a local file or paste a URL to play a video on infinite loop." />
+  <title>Lobby Display</title>
   <style>
-    :root {
-      --bg: #0b0b0b;
-      --fg: #f2f2f2;
-      --muted: #9aa0a6;
-      --accent: #4f46e5;
-      --card: #161616;
-      --border: #2a2a2a;
+    html, body { height: 100%; margin: 0; background: #000; }
+    /* Fill the screen like fullscreen, even if the browser blocks true fullscreen */
+    video {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      background: #000;
     }
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: var(--bg);
-      color: var(--fg);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-    }
-    .wrap {
-      display: grid;
-      grid-template-rows: auto 1fr auto;
-      height: 100%;
-    }
-    header {
-      display: flex;
-      flex-wrap: wrap;
-      gap: .75rem 1rem;
-      align-items: center;
-      padding: .75rem 1rem;
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      position: sticky; top: 0; z-index: 10;
-    }
-    header h1 { font-size: 1rem; margin: 0 .5rem 0 0; font-weight: 600; color: var(--muted); }
-    .controls { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
-    .controls > * { border-radius: .6rem; border: 1px solid var(--border); background: #111; color: var(--fg); }
-    input[type="text"] { padding: .55rem .7rem; min-width: 26ch; background: #0f0f0f; }
-    input[type="file"] { padding: .45rem; }
-    button, select, label.btnlike {
-      padding: .55rem .8rem; cursor: pointer; background: #121212;
-    }
-    button.primary { background: var(--accent); border-color: var(--accent); }
-    button:disabled { opacity: .5; cursor: not-allowed; }
-    label.switch { display: inline-flex; gap: .5rem; align-items: center; font-size: .95rem; }
-    main { display: grid; place-items: center; padding: 0; }
-    .stage { position: relative; width: 100%; height: 100%; display: grid; place-items: center; }
-    video { width: 100%; height: 100%; background: black; }
-    .footerbar { display:flex; justify-content: space-between; gap:.75rem; padding:.6rem 1rem; border-top:1px solid var(--border); background: var(--card); color: var(--muted); }
-    .hint { font-size: .9rem; }
-    .sp { width: 1px; height: 1px; overflow: hidden; position: absolute; left: -9999px; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <h1>Loop Video Player</h1>
-      <div class="controls" role="group" aria-label="Video source controls">
-        <input id="file" type="file" accept="video/*" />
-        <input id="url" type="text" placeholder="Paste video URL (mp4, webm, etc.)" />
-        <button id="loadUrl" class="primary" title="Load from URL">Load</button>
-        <button id="fs">Fullscreen</button>
-        <select id="fit" title="Fit mode">
-          <option value="contain">Fit (contain)</option>
-          <option value="cover">Fill (cover)</option>
-          <option value="fill">Stretch (fill)</option>
-        </select>
-        <label class="switch"><input id="muted" type="checkbox" checked />Muted</label>
-        <label class="switch"><input id="controls" type="checkbox" />Show controls</label>
-        <label class="switch"><input id="wake" type="checkbox" checked />Keep screen awake</label>
-      </div>
-    </header>
-
-    <main>
-      <div class="stage">
-        <video id="player" loop muted autoplay playsinline preload="auto">
-          <source src="videos/lobby.mp4" type="video/mp4">
-        </video>
-      </div>
-    </main>
-
-    <div class="footerbar">
-      <div class="hint">Tip: most browsers only autoplay if muted. Uncheck <em>Muted</em> after it starts, if needed.</div>
-      <div>Shortcuts: <kbd>F</kbd> fullscreen, <kbd>M</kbd> mute, <kbd>Space</kbd> play/pause</div>
-    </div>
-  </div>
+  <video id="player" src="videos/lobby.mp4" loop muted autoplay playsinline preload="auto"></video>
 
   <script>
     (function(){
-      const $ = sel => document.querySelector(sel);
-      const player = $('#player');
-      const file = $('#file');
-      const url = $('#url');
-      const loadBtn = $('#loadUrl');
-      const fsBtn = $('#fs');
-      const fitSel = $('#fit');
-      const mutedCk = $('#muted');
-      const ctrlsCk = $('#controls');
-      const wakeCk = $('#wake');
-
-      let objectURL = null;
+      const player = document.getElementById('player');
       let wakeLock = null;
 
-      // --- Settings persistence (except local file path) ---
-      const LS_KEY = 'loop-video-player:v1';
-      function saveSettings(extra={}){
-        const data = {
-          fit: fitSel.value,
-          muted: mutedCk.checked,
-          controls: ctrlsCk.checked,
-          wake: wakeCk.checked,
-          url: url.value.trim() || undefined,
-          ...extra
-        };
-        localStorage.setItem(LS_KEY, JSON.stringify(data));
-      }
-      function loadSettings(){
+      async function ensureWakeLock(){
         try{
-          const data = JSON.parse(localStorage.getItem(LS_KEY)||'{}');
-          if(data.fit) fitSel.value = data.fit;
-          if(typeof data.muted === 'boolean') mutedCk.checked = data.muted;
-          if(typeof data.controls === 'boolean') ctrlsCk.checked = data.controls;
-          if(typeof data.wake === 'boolean') wakeCk.checked = data.wake;
-          if(data.url) url.value = data.url;
-          applyFit();
-          applyMuted();
-          applyControls();
-          if(data.url){
-            // Attempt to auto-load last URL
-            setSrc(data.url);
+          if('wakeLock' in navigator){
+            if(!wakeLock){
+              wakeLock = await navigator.wakeLock.request('screen');
+              wakeLock.addEventListener && wakeLock.addEventListener('release', ()=>{ wakeLock = null; });
+            }
           }
-        }catch(e){ /* ignore */ }
+        }catch(_){}
       }
 
-      // --- Helpers ---
-      function revokeObjectURL(){
-        if(objectURL){ URL.revokeObjectURL(objectURL); objectURL = null; }
-      }
-      function setSrc(src){
-        revokeObjectURL();
-        player.src = src;
-        player.currentTime = 0;
-        // Try to play; some browsers require a user gesture; button clicks will handle that.
-        player.play().catch(()=>{/* will start after gesture */});
-        saveSettings();
-      }
-      function applyFit(){
-        const v = fitSel.value;
-        if(v === 'contain'){
-          player.style.objectFit = 'contain';
-        }else if(v === 'cover'){
-          player.style.objectFit = 'cover';
-        }else{
-          player.style.objectFit = 'fill';
-        }
-      }
-      function applyMuted(){ player.muted = mutedCk.checked; }
-      function applyControls(){ player.controls = ctrlsCk.checked; }
-
-      async function requestWakeLock(){
+      async function goFullscreen(){
         try{
-          if('wakeLock' in navigator && wakeCk.checked){
-            wakeLock = await navigator.wakeLock.request('screen');
-            wakeLock.addEventListener('release', ()=>{ /* noop */ });
+          if(!document.fullscreenElement){
+            await player.requestFullscreen();
           }
-        }catch(err){ /* ignore */ }
+        }catch(_){}
       }
-      function releaseWakeLock(){ if(wakeLock){ wakeLock.release(); wakeLock = null; } }
 
-      // --- Event wiring ---
-      file.addEventListener('change', () => {
-        const f = file.files && file.files[0];
-        if(!f) return;
-        objectURL = URL.createObjectURL(f);
-        setSrc(objectURL);
-      });
+      function keepPlaying(){
+        if(player.paused) player.play().catch(()=>{});
+      }
 
-      loadBtn.addEventListener('click', () => {
-        const u = url.value.trim();
-        if(!u) return;
-        setSrc(u);
-      });
-
-      fsBtn.addEventListener('click', async () => {
-        const el = player;
-        if(!document.fullscreenElement){
-          try { await el.requestFullscreen(); } catch(_) {}
-        } else {
-          try { await document.exitFullscreen(); } catch(_) {}
-        }
-      });
-
-      fitSel.addEventListener('change', ()=>{ applyFit(); saveSettings(); });
-      mutedCk.addEventListener('change', ()=>{ applyMuted(); saveSettings(); player.play().catch(()=>{}); });
-      ctrlsCk.addEventListener('change', ()=>{ applyControls(); saveSettings(); });
-      wakeCk.addEventListener('change', ()=>{ if(wakeCk.checked) requestWakeLock(); else releaseWakeLock(); saveSettings(); });
-
-      // Keep wake lock alive on visibility changes
       document.addEventListener('visibilitychange', () => {
-        if(document.visibilityState === 'visible' && wakeCk.checked){ requestWakeLock(); }
+        if(document.visibilityState === 'visible'){
+          ensureWakeLock();
+          goFullscreen();
+          keepPlaying();
+        }
       });
 
-      // Basic shortcuts
-      window.addEventListener('keydown', (e) => {
-        if(e.key === 'f' || e.key === 'F'){ fsBtn.click(); }
-        if(e.key === 'm' || e.key === 'M'){ mutedCk.checked = !mutedCk.checked; mutedCk.dispatchEvent(new Event('change')); }
-        if(e.code === 'Space'){ e.preventDefault(); if(player.paused) player.play(); else player.pause(); }
-      });
+      player.addEventListener('loadeddata', () => { goFullscreen(); keepPlaying(); });
+      player.addEventListener('play', () => { ensureWakeLock(); goFullscreen(); });
+      // Loop is handled by the attribute; this just double-sures it
+      player.addEventListener('ended', () => { player.play().catch(()=>{}); });
 
-      // Initialize
-      loadSettings();
-      if(wakeCk.checked) requestWakeLock();
+      // Kick things off on load
+      ensureWakeLock();
+      goFullscreen();
+      keepPlaying();
+
+      // Periodic nudge for kiosk setups
+      setInterval(keepPlaying, 10000);
     })();
   </script>
 </body>
